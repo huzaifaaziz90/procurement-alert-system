@@ -1,0 +1,1698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ProcureAlert — Procurement Alert Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:         #0F1117;
+    --surface:    #181C27;
+    --surface2:   #1E2333;
+    --border:     #2A2F42;
+    --accent:     #3B7CFF;
+    --accent-dim: #1E3A7A;
+    --warn:       #FF6B35;
+    --ok:         #22C55E;
+    --text:       #E8EAF0;
+    --muted:      #6B7280;
+    --label:      #9CA3AF;
+    --mono:       'JetBrains Mono', monospace;
+    --sans:       'Inter', sans-serif;
+    --radius:     10px;
+    --radius-lg:  16px;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    line-height: 1.6;
+  }
+
+  /* ── Header ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: rgba(15,17,23,0.92);
+    backdrop-filter: blur(12px);
+    z-index: 100;
+  }
+
+  .logo {
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: -0.02em;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .logo-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.5; transform: scale(0.8); }
+  }
+
+  .badge {
+    font-size: 0.7rem;
+    font-family: var(--mono);
+    background: var(--accent-dim);
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Progress bar ── */
+  .progress-wrap {
+    padding: 2rem 2rem 0;
+    max-width: 780px;
+    margin: 0 auto;
+  }
+
+  .steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 2.5rem;
+  }
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+  }
+
+  .step-item:last-child { flex: 0; }
+
+  .step-circle {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--muted);
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+    font-family: var(--mono);
+  }
+
+  .step-circle.active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+  }
+
+  .step-circle.done {
+    border-color: var(--ok);
+    background: var(--ok);
+    color: white;
+  }
+
+  .step-label {
+    font-size: 0.78rem;
+    color: var(--muted);
+    white-space: nowrap;
+    transition: color 0.3s;
+  }
+
+  .step-label.active { color: var(--text); font-weight: 500; }
+  .step-label.done   { color: var(--ok); }
+
+  .step-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    margin: 0 12px;
+    transition: background 0.3s;
+  }
+
+  .step-line.done { background: var(--ok); }
+
+  /* ── Main container ── */
+  main {
+    max-width: 780px;
+    margin: 0 auto;
+    padding: 0 2rem 4rem;
+  }
+
+  /* ── Screens ── */
+  .screen { display: none; animation: fadeUp 0.35s ease; }
+  .screen.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── Screen headings ── */
+  .screen-head { margin-bottom: 2rem; }
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    color: var(--accent);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+  .screen-head h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+  }
+  .screen-head p {
+    color: var(--label);
+    font-size: 0.92rem;
+    margin-top: 6px;
+  }
+
+  /* ── Upload zone ── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: var(--radius-lg);
+    padding: 3.5rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    background: var(--surface);
+    position: relative;
+  }
+
+  .upload-zone:hover,
+  .upload-zone.drag-over {
+    border-color: var(--accent);
+    background: var(--surface2);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    width: 52px; height: 52px;
+    background: var(--surface2);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1rem;
+    font-size: 1.5rem;
+  }
+
+  .upload-zone h3 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .upload-zone p {
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+
+  .file-types {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 1rem;
+  }
+
+  .file-tag {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    padding: 3px 8px;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+  }
+
+  /* File loaded state */
+  .file-loaded {
+    display: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-top: 1rem;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .file-loaded.show { display: flex; }
+
+  .file-icon-wrap {
+    width: 36px; height: 36px;
+    background: rgba(34,197,94,0.1);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  .file-info { flex: 1; }
+  .file-name { font-weight: 500; font-size: 0.9rem; }
+  .file-meta { font-size: 0.78rem; color: var(--muted); font-family: var(--mono); }
+
+  .remove-file {
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 0.2s;
+  }
+  .remove-file:hover { color: var(--warn); }
+
+  /* ── Privacy notice ── */
+  .privacy-box {
+    background: rgba(59,124,255,0.06);
+    border: 1px solid rgba(59,124,255,0.2);
+    border-radius: var(--radius);
+    padding: 0.9rem 1.1rem;
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .privacy-box .icon { font-size: 0.9rem; flex-shrink: 0; margin-top: 2px; }
+  .privacy-box p { font-size: 0.82rem; color: var(--label); line-height: 1.5; }
+  .privacy-box strong { color: var(--accent); }
+
+  /* ── Form fields ── */
+  .form-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+  }
+
+  .form-section-title {
+    font-size: 0.78rem;
+    font-family: var(--mono);
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .field {
+    margin-bottom: 1.25rem;
+  }
+  .field:last-child { margin-bottom: 0; }
+
+  label {
+    display: block;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  label .hint {
+    font-weight: 400;
+    color: var(--muted);
+    font-size: 0.8rem;
+  }
+
+  select, input[type="number"], input[type="email"], input[type="time"], input[type="text"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.65rem 0.9rem;
+    color: var(--text);
+    font-size: 0.9rem;
+    font-family: var(--sans);
+    outline: none;
+    transition: border-color 0.2s;
+    appearance: none;
+    -webkit-appearance: none;
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236B7280' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 2rem;
+  }
+
+  select:focus, input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,124,255,0.12);
+  }
+
+  select option { background: var(--surface2); }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  /* ── Threshold input ── */
+  .threshold-wrap {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .threshold-wrap input {
+    width: 80px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .threshold-wrap span {
+    font-size: 0.88rem;
+    color: var(--label);
+  }
+
+  /* ── Email tags ── */
+  .email-tags-wrap {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px;
+    min-height: 46px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+    cursor: text;
+    transition: border-color 0.2s;
+  }
+
+  .email-tags-wrap:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(59,124,255,0.12);
+  }
+
+  .email-tag {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-radius: 5px;
+    padding: 3px 8px;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+  }
+
+  .email-tag button {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1;
+    opacity: 0.7;
+    padding: 0;
+  }
+  .email-tag button:hover { opacity: 1; }
+
+  .email-input-hidden {
+    border: none;
+    background: none;
+    outline: none;
+    color: var(--text);
+    font-size: 0.88rem;
+    font-family: var(--sans);
+    flex: 1;
+    min-width: 180px;
+    padding: 2px 4px;
+  }
+
+  .email-hint {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-top: 5px;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 0.7rem 1.4rem;
+    border-radius: var(--radius);
+    font-size: 0.9rem;
+    font-weight: 600;
+    font-family: var(--sans);
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+    text-decoration: none;
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: #2563EB; transform: translateY(-1px); }
+  .btn-primary:active { transform: translateY(0); }
+  .btn-primary:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-secondary {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .btn-warn {
+    background: var(--warn);
+    color: white;
+  }
+  .btn-warn:hover { background: #e5520f; }
+
+  .btn-ok {
+    background: var(--ok);
+    color: white;
+  }
+
+  .btn-full { width: 100%; }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 1.5rem;
+    justify-content: flex-end;
+  }
+
+  /* ── Stats cards ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 1rem;
+    text-align: center;
+  }
+
+  .stat-card.alert { border-color: rgba(255,107,53,0.3); background: rgba(255,107,53,0.05); }
+  .stat-card.ok    { border-color: rgba(34,197,94,0.3);  background: rgba(34,197,94,0.05); }
+  .stat-card.info  { border-color: rgba(59,124,255,0.3); background: rgba(59,124,255,0.05); }
+
+  .stat-number {
+    font-size: 2rem;
+    font-weight: 700;
+    font-family: var(--mono);
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-card.alert .stat-number { color: var(--warn); }
+  .stat-card.ok    .stat-number { color: var(--ok); }
+  .stat-card.info  .stat-number { color: var(--accent); }
+
+  .stat-label {
+    font-size: 0.75rem;
+    color: var(--muted);
+    font-weight: 500;
+  }
+
+  /* ── Results table ── */
+  .results-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+
+  .results-head {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .results-head h3 {
+    font-size: 0.9rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .count-badge {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+
+  .count-badge.red    { background: rgba(255,107,53,0.15); color: var(--warn); }
+  .count-badge.green  { background: rgba(34,197,94,0.12);  color: var(--ok); }
+  .count-badge.blue   { background: rgba(59,124,255,0.12); color: var(--accent); }
+
+  .results-table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+  }
+
+  th {
+    background: var(--surface2);
+    padding: 0.6rem 1rem;
+    text-align: left;
+    font-size: 0.73rem;
+    font-family: var(--mono);
+    color: var(--muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 0.65rem 1rem;
+    border-top: 1px solid var(--border);
+    color: var(--label);
+    white-space: nowrap;
+    max-width: 200px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  tr:hover td { background: var(--surface2); }
+
+  td.highlight-red   { color: var(--warn); font-weight: 600; font-family: var(--mono); }
+  td.highlight-green { color: var(--ok);   font-weight: 600; }
+  td.highlight-blue  { color: var(--accent); font-family: var(--mono); }
+
+  /* ── Email preview modal ── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+  }
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: white;
+    color: #1a1a1a;
+    border-radius: var(--radius-lg);
+    width: 100%;
+    max-width: 640px;
+    max-height: 85vh;
+    overflow-y: auto;
+    box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+  }
+
+  .modal-header {
+    padding: 1.25rem 1.5rem;
+    border-bottom: 1px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: white;
+    z-index: 1;
+  }
+
+  .modal-header h3 { font-size: 0.9rem; font-weight: 600; color: #374151; }
+
+  .modal-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: #9ca3af;
+    padding: 4px;
+    border-radius: 4px;
+  }
+  .modal-close:hover { color: #374151; background: #f3f4f6; }
+
+  .modal-body { padding: 1.5rem; }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 0.85rem 1.25rem;
+    font-size: 0.88rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 300;
+    transform: translateY(100px);
+    opacity: 0;
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    max-width: 340px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: rgba(34,197,94,0.4); }
+  .toast.error   { border-color: rgba(255,107,53,0.4); }
+
+  /* ── Misc ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 1.5rem 0;
+  }
+
+  .empty-state {
+    text-align: center;
+    padding: 2rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  @media (max-width: 600px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .field-row  { grid-template-columns: 1fr; }
+    .btn-row    { flex-direction: column-reverse; }
+    .btn-row .btn { width: 100%; }
+    header { padding: 0 1rem; }
+    main, .progress-wrap { padding-left: 1rem; padding-right: 1rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-dot"></div>
+    ProcureAlert
+  </div>
+  <span class="badge">BETA</span>
+</header>
+
+<!-- Progress -->
+<div class="progress-wrap">
+  <div class="steps">
+    <div class="step-item">
+      <div class="step-circle active" id="sc1">1</div>
+      <span class="step-label active" id="sl1">Upload</span>
+    </div>
+    <div class="step-line" id="line1"></div>
+    <div class="step-item">
+      <div class="step-circle" id="sc2">2</div>
+      <span class="step-label" id="sl2">Configure</span>
+    </div>
+    <div class="step-line" id="line2"></div>
+    <div class="step-item">
+      <div class="step-circle" id="sc3">3</div>
+      <span class="step-label" id="sl3">Results</span>
+    </div>
+  </div>
+</div>
+
+<main>
+
+  <!-- ── SCREEN 1: Upload ── -->
+  <div class="screen active" id="screen1">
+    <div class="screen-head">
+      <div class="eyebrow">Step 1 of 3</div>
+      <h2>Upload your procurement data</h2>
+      <p>Works with Excel files from any system — SAP exports, manual logs, shared drives.</p>
+    </div>
+
+    <div class="upload-zone" id="uploadZone">
+      <input type="file" id="fileInput" accept=".xlsx,.xls,.csv"/>
+      <div class="upload-icon">📊</div>
+      <h3>Drop your file here</h3>
+      <p>or click to browse your computer</p>
+      <div class="file-types">
+        <span class="file-tag">.xlsx</span>
+        <span class="file-tag">.xls</span>
+        <span class="file-tag">.csv</span>
+      </div>
+    </div>
+
+    <div class="file-loaded" id="fileLoaded">
+      <div class="file-icon-wrap">✅</div>
+      <div class="file-info">
+        <div class="file-name" id="fileName">—</div>
+        <div class="file-meta" id="fileMeta">—</div>
+      </div>
+      <button class="remove-file" id="removeFile" title="Remove file">✕</button>
+    </div>
+
+    <div class="privacy-box">
+      <span class="icon">🔒</span>
+      <p><strong>Your data never leaves your device.</strong> All processing happens locally in your browser. No files are uploaded to any server. Your procurement data stays completely private.</p>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="toStep2" disabled>
+        Continue — Map Your Data →
+      </button>
+    </div>
+  </div>
+
+  <!-- ── SCREEN 2: Configure ── -->
+  <div class="screen" id="screen2">
+    <div class="screen-head">
+      <div class="eyebrow">Step 2 of 3</div>
+      <h2>Tell us about your data</h2>
+      <p>Match your column names to what they represent. We found <strong id="colCount">—</strong> columns in your file.</p>
+    </div>
+
+    <!-- Column mapping -->
+    <div class="form-section">
+      <div class="form-section-title">Column Mapping</div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>PR / Request date <span class="hint">When the request was raised</span></label>
+          <select id="col_pr_date"><option value="">— not in my data —</option></select>
+        </div>
+        <div class="field">
+          <label>RFQ / Quote date <span class="hint">When quotes were requested</span></label>
+          <select id="col_rfq_date"><option value="">— not in my data —</option></select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>PO / Order date <span class="hint">When the order was placed</span></label>
+          <select id="col_po_date"><option value="">— not in my data —</option></select>
+        </div>
+        <div class="field">
+          <label>Expected delivery date <span class="hint">Promised delivery date</span></label>
+          <select id="col_dod"><option value="">— not in my data —</option></select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Delivery status <span class="hint">e.g. Delivered, Pending</span></label>
+          <select id="col_del_status"><option value="">— not in my data —</option></select>
+        </div>
+        <div class="field">
+          <label>Supplier / Vendor name</label>
+          <select id="col_vendor"><option value="">— not in my data —</option></select>
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field">
+          <label>Order value / PO value</label>
+          <select id="col_value"><option value="">— not in my data —</option></select>
+        </div>
+        <div class="field">
+          <label>Item description</label>
+          <select id="col_desc"><option value="">— not in my data —</option></select>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>"Delivered" status text <span class="hint">Exact word your system uses for delivered orders</span></label>
+        <input type="text" id="delivered_text" value="Delivered" placeholder="e.g. Delivered, DELIVERED, Done, Closed"/>
+      </div>
+    </div>
+
+    <!-- Alert thresholds -->
+    <div class="form-section">
+      <div class="form-section-title">Alert Thresholds</div>
+
+      <div class="field">
+        <label>Flag a delivery as overdue after</label>
+        <div class="threshold-wrap">
+          <input type="number" id="thresh_overdue" value="7" min="1" max="365"/>
+          <span>days past expected delivery date</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Flag a request as stuck (no quote) after</label>
+        <div class="threshold-wrap">
+          <input type="number" id="thresh_rfq" value="14" min="1" max="365"/>
+          <span>days without a quote being requested</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>Flag a supplier as high-risk when they have</label>
+        <div class="threshold-wrap">
+          <input type="number" id="thresh_vendor" value="3" min="1" max="50"/>
+          <span>or more overdue orders at once</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Email settings -->
+    <div class="form-section">
+      <div class="form-section-title">Where to Send Alerts</div>
+
+      <div class="field">
+        <label>Email addresses <span class="hint">Press Enter or comma after each address</span></label>
+        <div class="email-tags-wrap" id="emailTagsWrap">
+          <input class="email-input-hidden" id="emailInput" type="email"
+                 placeholder="name@company.com" autocomplete="off"/>
+        </div>
+        <div class="email-hint">Add as many recipients as needed — press Enter after each one.</div>
+      </div>
+
+      <div class="privacy-box" style="margin-top:0.5rem">
+        <span class="icon">📬</span>
+        <p>When you click <strong>Send Report</strong>, your default email app (Outlook, Gmail, Apple Mail) will open with the report pre-filled. Just hit Send. <strong>No account or setup needed.</strong></p>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-secondary" id="backToStep1">← Back</button>
+      <button class="btn btn-primary" id="runReport">
+        Generate My Report →
+      </button>
+    </div>
+  </div>
+
+  <!-- ── SCREEN 3: Results ── -->
+  <div class="screen" id="screen3">
+    <div class="screen-head">
+      <div class="eyebrow">Step 3 of 3</div>
+      <h2>Your procurement report</h2>
+      <p id="reportSubtitle">Based on your data — processed entirely in your browser.</p>
+    </div>
+
+    <!-- Summary stats -->
+    <div class="stats-grid">
+      <div class="stat-card alert">
+        <div class="stat-number" id="stat_overdue">—</div>
+        <div class="stat-label">Overdue Deliveries</div>
+      </div>
+      <div class="stat-card alert">
+        <div class="stat-number" id="stat_noriq">—</div>
+        <div class="stat-label">Requests Without Quote</div>
+      </div>
+      <div class="stat-card alert">
+        <div class="stat-number" id="stat_vendors">—</div>
+        <div class="stat-label">High-Risk Suppliers</div>
+      </div>
+    </div>
+
+    <div class="stats-grid" style="margin-bottom:1.5rem">
+      <div class="stat-card ok">
+        <div class="stat-number" id="stat_delivered">—</div>
+        <div class="stat-label">Delivered</div>
+      </div>
+      <div class="stat-card info">
+        <div class="stat-number" id="stat_total">—</div>
+        <div class="stat-label">Total Orders</div>
+      </div>
+      <div class="stat-card info">
+        <div class="stat-number" id="stat_upcoming">—</div>
+        <div class="stat-label">Due in 14 Days</div>
+      </div>
+    </div>
+
+    <!-- Overdue table -->
+    <div class="results-section">
+      <div class="results-head">
+        <h3>⏰ Overdue Deliveries <span class="count-badge red" id="badge_overdue">0</span></h3>
+      </div>
+      <div class="results-table-wrap">
+        <table id="table_overdue">
+          <thead><tr>
+            <th>Supplier</th>
+            <th>Description</th>
+            <th>Expected</th>
+            <th>Days Late</th>
+          </tr></thead>
+          <tbody id="tbody_overdue"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- No RFQ table -->
+    <div class="results-section">
+      <div class="results-head">
+        <h3>📋 Requests Without Quote <span class="count-badge red" id="badge_noriq">0</span></h3>
+      </div>
+      <div class="results-table-wrap">
+        <table id="table_noriq">
+          <thead><tr>
+            <th>Description</th>
+            <th>Request Date</th>
+            <th>Days Waiting</th>
+          </tr></thead>
+          <tbody id="tbody_noriq"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Vendor risk table -->
+    <div class="results-section">
+      <div class="results-head">
+        <h3>🏭 High-Risk Suppliers <span class="count-badge red" id="badge_vendors">0</span></h3>
+      </div>
+      <div class="results-table-wrap">
+        <table>
+          <thead><tr>
+            <th>Supplier</th>
+            <th>Overdue Orders</th>
+          </tr></thead>
+          <tbody id="tbody_vendors"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Upcoming table -->
+    <div class="results-section">
+      <div class="results-head">
+        <h3>📅 Due in Next 14 Days <span class="count-badge blue" id="badge_upcoming">0</span></h3>
+      </div>
+      <div class="results-table-wrap">
+        <table>
+          <thead><tr>
+            <th>Supplier</th>
+            <th>Description</th>
+            <th>Due Date</th>
+            <th>Days Left</th>
+          </tr></thead>
+          <tbody id="tbody_upcoming"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <!-- Actions -->
+    <div class="btn-row" style="justify-content:space-between; flex-wrap:wrap; gap:12px">
+      <button class="btn btn-secondary" id="backToStep2">← Edit Settings</button>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-secondary" id="previewEmailBtn">👁 Preview Email</button>
+        <button class="btn btn-primary" id="copyReportBtn">📋 Copy Report</button>
+      </div>
+    </div>
+
+    <!-- Copy success panel — shown after copying -->
+    <div id="copySuccessPanel" style="display:none;margin-top:1rem;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.3);border-radius:10px;padding:1.25rem">
+      <p style="font-size:0.9rem;font-weight:600;color:var(--ok);margin-bottom:0.5rem">✅ Report copied to clipboard!</p>
+      <p style="font-size:0.83rem;color:var(--label);margin-bottom:1rem">Now open your email app, start a new email, paste (Ctrl+V), and send to your recipients.</p>
+      <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:0.75rem;margin-bottom:1rem">
+        <p style="font-size:0.78rem;color:var(--muted);margin-bottom:4px;font-family:var(--mono)">SEND TO:</p>
+        <p style="font-size:0.88rem;color:var(--text);font-family:var(--mono)" id="recipientDisplay">—</p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-ok" onclick="window.open('https://mail.google.com/mail/?view=cm','_blank')">Open Gmail</button>
+        <button class="btn btn-secondary" onclick="window.open('https://outlook.live.com/mail/0/deeplink/compose','_blank')">Open Outlook Web</button>
+        <button class="btn btn-secondary" id="copyAgainBtn">📋 Copy Again</button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- Email preview modal -->
+<div class="modal-overlay" id="emailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Email Preview</h3>
+      <button class="modal-close" id="closeModal">✕</button>
+    </div>
+    <div class="modal-body" id="emailPreviewBody"></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✅</span>
+  <span id="toastMsg">Done</span>
+</div>
+
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+const state = {
+  rawData:    [],
+  headers:    [],
+  config:     {},
+  report:     {},
+  emails:     [],
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function $(id) { return document.getElementById(id); }
+
+function showToast(msg, type='success') {
+  const t = $('toast');
+  $('toastMsg').textContent = msg;
+  $('toastIcon').textContent = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+  t.className = `toast ${type} show`;
+  setTimeout(() => { t.classList.remove('show'); }, 4000);
+}
+
+function parseDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val) ? null : val;
+  // Excel serial number
+  if (typeof val === 'number') {
+    const d = new Date((val - 25569) * 86400 * 1000);
+    return isNaN(d) ? null : d;
+  }
+  const d = new Date(val);
+  return isNaN(d) ? null : d;
+}
+
+function daysDiff(a, b) {
+  return Math.floor((b - a) / 86400000);
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' });
+}
+
+function truncate(str, n=35) {
+  if (!str) return '—';
+  str = String(str);
+  return str.length > n ? str.slice(0, n) + '…' : str;
+}
+
+// ── Step navigation ───────────────────────────────────────────────────────
+function goToStep(n) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  $(`screen${n}`).classList.add('active');
+
+  [1,2,3].forEach(i => {
+    const circle = $(`sc${i}`);
+    const label  = $(`sl${i}`);
+    circle.classList.remove('active','done');
+    label.classList.remove('active','done');
+    if (i < n)  { circle.classList.add('done');   label.classList.add('done'); circle.textContent = '✓'; }
+    if (i === n){ circle.classList.add('active');  label.classList.add('active'); circle.textContent = i; }
+    if (i > n)  { circle.textContent = i; }
+    if (i < 3 && $(`line${i}`)) {
+      $(`line${i}`).classList.toggle('done', i < n);
+    }
+  });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ── File upload ───────────────────────────────────────────────────────────
+const uploadZone = $('uploadZone');
+const fileInput  = $('fileInput');
+
+uploadZone.addEventListener('dragover',  e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFile(file);
+});
+
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (file) handleFile(file);
+});
+
+$('removeFile').addEventListener('click', () => {
+  state.rawData = []; state.headers = [];
+  $('fileLoaded').classList.remove('show');
+  $('toStep2').disabled = true;
+  fileInput.value = '';
+});
+
+function handleFile(file) {
+  const validTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                      'application/vnd.ms-excel', 'text/csv', ''];
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (!['xlsx','xls','csv'].includes(ext)) {
+    showToast('Please upload an .xlsx, .xls or .csv file', 'error');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const data = XLSX.utils.sheet_to_json(ws, { defval: '', raw: false, dateNF: 'YYYY-MM-DD' });
+      const dataRaw = XLSX.utils.sheet_to_json(ws, { defval: '', raw: true });
+
+      if (!data.length) { showToast('File appears empty', 'error'); return; }
+
+      state.rawData = dataRaw;
+      state.headers = Object.keys(data[0]);
+
+      $('fileName').textContent = file.name;
+      $('fileMeta').textContent = `${data.length.toLocaleString()} rows · ${state.headers.length} columns · Sheet: ${wb.SheetNames[0]}`;
+      $('fileLoaded').classList.add('show');
+      $('toStep2').disabled = false;
+      showToast(`Loaded ${data.length.toLocaleString()} rows successfully`);
+    } catch(err) {
+      showToast('Could not read file — is it a valid Excel or CSV?', 'error');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ── Populate column dropdowns ─────────────────────────────────────────────
+const COL_SELECTS = ['col_pr_date','col_rfq_date','col_po_date','col_dod',
+                     'col_del_status','col_vendor','col_value','col_desc'];
+
+// Smart auto-match keywords
+const AUTO_MATCH = {
+  col_pr_date:    ['pr date','pr_date','request date','requisition date','req date','date raised'],
+  col_rfq_date:   ['rfq date','rfq_date','quote date','enquiry date','tender date'],
+  col_po_date:    ['po date','po_date','order date','purchase date'],
+  col_dod:        ['dod','delivery date','expected delivery','due date','po dod','promised date','eta'],
+  col_del_status: ['delivery status','del status','status','order status','fulfillment status'],
+  col_vendor:     ['vendor','supplier','vendor name','supplier name','company','contractor'],
+  col_value:      ['value','po value','order value','amount','cost','price','value in sar','total'],
+  col_desc:       ['description','short description','item','material','details','desc','subject'],
+};
+
+function populateSelects() {
+  const headers = state.headers;
+  $('colCount').textContent = headers.length;
+
+  COL_SELECTS.forEach(id => {
+    const sel = $(id);
+    // Keep first "not in my data" option
+    sel.innerHTML = '<option value="">— not in my data —</option>';
+    headers.forEach(h => {
+      const opt = document.createElement('option');
+      opt.value = h; opt.textContent = h;
+      sel.appendChild(opt);
+    });
+
+    // Auto-match
+    const keywords = AUTO_MATCH[id] || [];
+    const matched = headers.find(h =>
+      keywords.some(kw => h.toLowerCase().includes(kw.toLowerCase()))
+    );
+    if (matched) sel.value = matched;
+  });
+}
+
+$('toStep2').addEventListener('click', () => {
+  populateSelects();
+  goToStep(2);
+});
+
+$('backToStep1').addEventListener('click', () => goToStep(1));
+$('backToStep2').addEventListener('click', () => goToStep(2));
+
+// ── Email tag input ───────────────────────────────────────────────────────
+const emailInput = $('emailInput');
+
+function addEmail(val) {
+  val = val.trim().toLowerCase();
+  if (!val) return;
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(val)) { showToast('Please enter a valid email address', 'error'); return; }
+  if (state.emails.includes(val)) { showToast('Already added', 'error'); return; }
+  state.emails.push(val);
+  renderEmailTags();
+  emailInput.value = '';
+}
+
+function removeEmail(val) {
+  state.emails = state.emails.filter(e => e !== val);
+  renderEmailTags();
+}
+
+function renderEmailTags() {
+  const wrap = $('emailTagsWrap');
+  wrap.querySelectorAll('.email-tag').forEach(t => t.remove());
+  state.emails.forEach(e => {
+    const tag = document.createElement('div');
+    tag.className = 'email-tag';
+    tag.innerHTML = `${e}<button onclick="removeEmail('${e}')" title="Remove">×</button>`;
+    wrap.insertBefore(tag, emailInput);
+  });
+}
+
+emailInput.addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.key === ',') {
+    e.preventDefault();
+    addEmail(emailInput.value);
+  }
+  if (e.key === 'Backspace' && !emailInput.value && state.emails.length) {
+    removeEmail(state.emails[state.emails.length - 1]);
+  }
+});
+
+emailInput.addEventListener('blur', () => {
+  if (emailInput.value) addEmail(emailInput.value);
+});
+
+$('emailTagsWrap').addEventListener('click', () => emailInput.focus());
+
+// ── Run report ────────────────────────────────────────────────────────────
+$('runReport').addEventListener('click', runReport);
+
+function getConfig() {
+  return {
+    col_pr_date:    $('col_pr_date').value,
+    col_rfq_date:   $('col_rfq_date').value,
+    col_po_date:    $('col_po_date').value,
+    col_dod:        $('col_dod').value,
+    col_del_status: $('col_del_status').value,
+    col_vendor:     $('col_vendor').value,
+    col_value:      $('col_value').value,
+    col_desc:       $('col_desc').value,
+    delivered_text: $('delivered_text').value.trim() || 'Delivered',
+    thresh_overdue: parseInt($('thresh_overdue').value) || 7,
+    thresh_rfq:     parseInt($('thresh_rfq').value) || 14,
+    thresh_vendor:  parseInt($('thresh_vendor').value) || 3,
+  };
+}
+
+function runReport() {
+  if (!state.emails.length) {
+    showToast('Please add at least one email address', 'error');
+    return;
+  }
+
+  state.config = getConfig();
+  const cfg    = state.config;
+  const rows   = state.rawData;
+  const today  = new Date();
+  today.setHours(0,0,0,0);
+
+  // Delivered statuses — be flexible
+  const deliveredKeywords = ['delivered','del','done','closed','complete','received'];
+  function isDelivered(val) {
+    if (!val) return false;
+    const v = String(val).toLowerCase().trim();
+    return v === cfg.delivered_text.toLowerCase() ||
+           deliveredKeywords.some(kw => v === kw);
+  }
+
+  const overdue = [], noRFQ = [], upcoming = [], vendorMap = {};
+  let deliveredCount = 0, totalWithDOD = 0;
+
+  rows.forEach(row => {
+    const dod       = cfg.col_dod        ? parseDate(row[cfg.col_dod])        : null;
+    const prDate    = cfg.col_pr_date    ? parseDate(row[cfg.col_pr_date])    : null;
+    const rfqDate   = cfg.col_rfq_date   ? parseDate(row[cfg.col_rfq_date])   : null;
+    const delStatus = cfg.col_del_status ? String(row[cfg.col_del_status]||'') : '';
+    const vendor    = cfg.col_vendor     ? String(row[cfg.col_vendor]||'')     : '—';
+    const desc      = cfg.col_desc       ? String(row[cfg.col_desc]||'')       : '—';
+    const delivered = isDelivered(delStatus);
+
+    if (delivered) deliveredCount++;
+
+    // Overdue
+    if (dod && !delivered) {
+      totalWithDOD++;
+      const daysLate = daysDiff(dod, today);
+      if (daysLate >= cfg.thresh_overdue) {
+        overdue.push({ vendor, desc, dod, daysLate });
+        // Vendor tracking
+        if (vendor && vendor !== '—') {
+          vendorMap[vendor] = (vendorMap[vendor] || 0) + 1;
+        }
+      }
+    }
+
+    // Upcoming (next 14 days, not delivered)
+    if (dod && !delivered) {
+      const daysLeft = daysDiff(today, dod);
+      if (daysLeft >= 0 && daysLeft <= 14) {
+        upcoming.push({ vendor, desc, dod, daysLeft });
+      }
+    }
+
+    // No RFQ
+    if (cfg.col_pr_date && cfg.col_rfq_date && prDate && !rfqDate) {
+      const age = daysDiff(prDate, today);
+      if (age >= cfg.thresh_rfq) {
+        noRFQ.push({ desc, prDate, age });
+      }
+    }
+  });
+
+  // Sort
+  overdue.sort((a,b) => b.daysLate - a.daysLate);
+  noRFQ.sort((a,b) => b.age - a.age);
+  upcoming.sort((a,b) => a.daysLeft - b.daysLeft);
+
+  // High-risk vendors
+  const highRiskVendors = Object.entries(vendorMap)
+    .filter(([,c]) => c >= cfg.thresh_vendor)
+    .sort((a,b) => b[1] - a[1])
+    .map(([vendor, count]) => ({ vendor, count }));
+
+  state.report = { overdue, noRFQ, upcoming, highRiskVendors,
+    deliveredCount, total: rows.length };
+
+  renderResults();
+  goToStep(3);
+}
+
+// ── Render results ────────────────────────────────────────────────────────
+function renderResults() {
+  const r = state.report;
+
+  $('stat_overdue').textContent  = r.overdue.length;
+  $('stat_noriq').textContent    = r.noRFQ.length;
+  $('stat_vendors').textContent  = r.highRiskVendors.length;
+  $('stat_delivered').textContent= r.deliveredCount;
+  $('stat_total').textContent    = r.total;
+  $('stat_upcoming').textContent = r.upcoming.length;
+
+  $('badge_overdue').textContent  = r.overdue.length;
+  $('badge_noriq').textContent    = r.noRFQ.length;
+  $('badge_vendors').textContent  = r.highRiskVendors.length;
+  $('badge_upcoming').textContent = r.upcoming.length;
+
+  $('reportSubtitle').textContent =
+    `Analysed ${r.total.toLocaleString()} rows · ${r.overdue.length} issues need attention today.`;
+
+  // Overdue table
+  const tbO = $('tbody_overdue');
+  tbO.innerHTML = r.overdue.length ? '' : '<tr><td colspan="4" class="empty-state">No overdue deliveries found — great!</td></tr>';
+  r.overdue.slice(0,20).forEach(row => {
+    tbO.innerHTML += `<tr>
+      <td title="${row.vendor}">${truncate(row.vendor,28)}</td>
+      <td title="${row.desc}">${truncate(row.desc)}</td>
+      <td>${fmtDate(row.dod)}</td>
+      <td class="highlight-red">${row.daysLate} days</td>
+    </tr>`;
+  });
+
+  // No RFQ table
+  const tbN = $('tbody_noriq');
+  tbN.innerHTML = r.noRFQ.length ? '' : '<tr><td colspan="3" class="empty-state">All requests have quotes — well managed!</td></tr>';
+  r.noRFQ.slice(0,20).forEach(row => {
+    tbN.innerHTML += `<tr>
+      <td title="${row.desc}">${truncate(row.desc,40)}</td>
+      <td>${fmtDate(row.prDate)}</td>
+      <td class="highlight-red">${row.age} days</td>
+    </tr>`;
+  });
+
+  // Vendor risk table
+  const tbV = $('tbody_vendors');
+  tbV.innerHTML = r.highRiskVendors.length ? '' : '<tr><td colspan="2" class="empty-state">No high-risk suppliers identified.</td></tr>';
+  r.highRiskVendors.forEach(v => {
+    tbV.innerHTML += `<tr>
+      <td>${truncate(v.vendor, 40)}</td>
+      <td class="highlight-red">${v.count} overdue orders</td>
+    </tr>`;
+  });
+
+  // Upcoming table
+  const tbU = $('tbody_upcoming');
+  tbU.innerHTML = r.upcoming.length ? '' : '<tr><td colspan="4" class="empty-state">No deliveries due in the next 14 days.</td></tr>';
+  r.upcoming.slice(0,15).forEach(row => {
+    tbU.innerHTML += `<tr>
+      <td title="${row.vendor}">${truncate(row.vendor,28)}</td>
+      <td title="${row.desc}">${truncate(row.desc)}</td>
+      <td>${fmtDate(row.dod)}</td>
+      <td class="highlight-green">${row.daysLeft === 0 ? 'Today' : row.daysLeft + ' days'}</td>
+    </tr>`;
+  });
+}
+
+// ── Build email HTML ──────────────────────────────────────────────────────
+function buildEmailHTML() {
+  const r   = state.report;
+  const now = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+
+  let overdueRows = r.overdue.slice(0,15).map(x => `
+    <tr>
+      <td style="padding:8px;border:1px solid #e5e7eb">${x.vendor}</td>
+      <td style="padding:8px;border:1px solid #e5e7eb">${truncate(x.desc,40)}</td>
+      <td style="padding:8px;border:1px solid #e5e7eb">${fmtDate(x.dod)}</td>
+      <td style="padding:8px;border:1px solid #e5e7eb;color:#dc2626;font-weight:700">${x.daysLate} days</td>
+    </tr>`).join('') || '<tr><td colspan="4" style="padding:8px;color:#6b7280">None found.</td></tr>';
+
+  let rfqRows = r.noRFQ.slice(0,10).map(x => `
+    <tr>
+      <td style="padding:8px;border:1px solid #e5e7eb">${truncate(x.desc,40)}</td>
+      <td style="padding:8px;border:1px solid #e5e7eb">${fmtDate(x.prDate)}</td>
+      <td style="padding:8px;border:1px solid #e5e7eb;color:#dc2626;font-weight:700">${x.age} days</td>
+    </tr>`).join('') || '<tr><td colspan="3" style="padding:8px;color:#6b7280">None found.</td></tr>';
+
+  let vendorRows = r.highRiskVendors.map(v => `
+    <tr>
+      <td style="padding:8px;border:1px solid #e5e7eb">${v.vendor}</td>
+      <td style="padding:8px;border:1px solid #e5e7eb;color:#dc2626;font-weight:700">${v.count} overdue orders</td>
+    </tr>`).join('') || '<tr><td colspan="2" style="padding:8px;color:#6b7280">None found.</td></tr>';
+
+  let upcomingRows = r.upcoming.slice(0,10).map(x => `
+    <tr>
+      <td style="padding:8px;border:1px solid #e5e7eb">${x.vendor}</td>
+      <td style="padding:8px;border:1px solid #e5e7eb">${truncate(x.desc,35)}</td>
+      <td style="padding:8px;border:1px solid #e5e7eb">${fmtDate(x.dod)}</td>
+      <td style="padding:8px;border:1px solid #e5e7eb;color:#16a34a;font-weight:700">${x.daysLeft === 0 ? 'Today' : x.daysLeft + ' days'}</td>
+    </tr>`).join('') || '<tr><td colspan="4" style="padding:8px;color:#6b7280">None found.</td></tr>';
+
+  return `
+<div style="font-family:Arial,sans-serif;max-width:700px;margin:0 auto;background:#f9fafb;padding:20px">
+  <div style="background:#1e2333;padding:20px 24px;border-radius:10px 10px 0 0;display:flex;align-items:center;gap:12px">
+    <div style="width:10px;height:10px;background:#3b7cff;border-radius:50%"></div>
+    <span style="color:white;font-weight:700;font-size:16px">ProcureAlert</span>
+    <span style="color:#6b7280;font-size:13px;margin-left:auto">${now}</span>
+  </div>
+
+  <div style="background:white;padding:24px;border-left:1px solid #e5e7eb;border-right:1px solid #e5e7eb">
+
+    <h2 style="color:#111827;margin:0 0 4px;font-size:20px">
+      ${r.overdue.length > 0 ? '🚨 Procurement Alert Report' : '📦 Daily Procurement Summary'}
+    </h2>
+    <p style="color:#6b7280;margin:0 0 20px;font-size:13px">
+      ${r.total.toLocaleString()} orders analysed · ${r.overdue.length} overdue · ${r.upcoming.length} due in 14 days
+    </p>
+
+    <!-- Summary row -->
+    <div style="display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap">
+      <div style="flex:1;min-width:100px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#dc2626">${r.overdue.length}</div>
+        <div style="font-size:11px;color:#6b7280">Overdue</div>
+      </div>
+      <div style="flex:1;min-width:100px;background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#dc2626">${r.noRFQ.length}</div>
+        <div style="font-size:11px;color:#6b7280">No Quote Yet</div>
+      </div>
+      <div style="flex:1;min-width:100px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#16a34a">${r.deliveredCount}</div>
+        <div style="font-size:11px;color:#6b7280">Delivered</div>
+      </div>
+      <div style="flex:1;min-width:100px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px;text-align:center">
+        <div style="font-size:24px;font-weight:700;color:#2563eb">${r.upcoming.length}</div>
+        <div style="font-size:11px;color:#6b7280">Due Soon</div>
+      </div>
+    </div>
+
+    <!-- Overdue -->
+    <h3 style="color:#dc2626;font-size:14px;margin:0 0 10px">⏰ Overdue Deliveries (${r.overdue.length})</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
+      <tr style="background:#dc2626;color:white">
+        <th style="padding:8px;text-align:left">Supplier</th>
+        <th style="padding:8px;text-align:left">Description</th>
+        <th style="padding:8px;text-align:left">Expected</th>
+        <th style="padding:8px;text-align:left">Days Late</th>
+      </tr>
+      ${overdueRows}
+    </table>
+
+    <!-- No RFQ -->
+    <h3 style="color:#7c3aed;font-size:14px;margin:0 0 10px">📋 Requests Without Quote (${r.noRFQ.length})</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
+      <tr style="background:#7c3aed;color:white">
+        <th style="padding:8px;text-align:left">Description</th>
+        <th style="padding:8px;text-align:left">Requested</th>
+        <th style="padding:8px;text-align:left">Days Waiting</th>
+      </tr>
+      ${rfqRows}
+    </table>
+
+    <!-- Vendor risk -->
+    <h3 style="color:#ea580c;font-size:14px;margin:0 0 10px">🏭 High-Risk Suppliers (${r.highRiskVendors.length})</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
+      <tr style="background:#ea580c;color:white">
+        <th style="padding:8px;text-align:left">Supplier</th>
+        <th style="padding:8px;text-align:left">Overdue Orders</th>
+      </tr>
+      ${vendorRows}
+    </table>
+
+    <!-- Upcoming -->
+    <h3 style="color:#16a34a;font-size:14px;margin:0 0 10px">📅 Due in Next 14 Days (${r.upcoming.length})</h3>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;margin-bottom:20px">
+      <tr style="background:#16a34a;color:white">
+        <th style="padding:8px;text-align:left">Supplier</th>
+        <th style="padding:8px;text-align:left">Description</th>
+        <th style="padding:8px;text-align:left">Due Date</th>
+        <th style="padding:8px;text-align:left">Days Left</th>
+      </tr>
+      ${upcomingRows}
+    </table>
+
+  </div>
+
+  <div style="background:#f3f4f6;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 10px 10px;padding:14px 24px;text-align:center">
+    <p style="color:#9ca3af;font-size:11px;margin:0">
+      ProcureAlert · Your data was processed locally and never uploaded to any server · 🔒 Privacy-first
+    </p>
+  </div>
+</div>`;
+}
+
+// ── Preview email ─────────────────────────────────────────────────────────
+$('previewEmailBtn').addEventListener('click', () => {
+  $('emailPreviewBody').innerHTML = buildEmailHTML();
+  $('emailModal').classList.add('show');
+});
+
+$('closeModal').addEventListener('click', () => $('emailModal').classList.remove('show'));
+$('emailModal').addEventListener('click', e => {
+  if (e.target === $('emailModal')) $('emailModal').classList.remove('show');
+});
+
+// ── Build plain text report ───────────────────────────────────────────────
+function buildPlainTextReport() {
+  const r   = state.report;
+  const now = new Date().toLocaleDateString('en-GB', { day:'2-digit', month:'long', year:'numeric' });
+
+  let body = `PROCUREMENT REPORT — ${now}\n`;
+  body += `${'='.repeat(52)}\n\n`;
+
+  body += `SUMMARY\n${'-'.repeat(30)}\n`;
+  body += `Total orders analysed : ${r.total}\n`;
+  body += `Overdue deliveries    : ${r.overdue.length}\n`;
+  body += `Requests without quote: ${r.noRFQ.length}\n`;
+  body += `High-risk suppliers   : ${r.highRiskVendors.length}\n`;
+  body += `Delivered             : ${r.deliveredCount}\n`;
+  body += `Due in next 14 days   : ${r.upcoming.length}\n\n`;
+
+  if (r.overdue.length) {
+    body += `OVERDUE DELIVERIES (${r.overdue.length})\n${'-'.repeat(30)}\n`;
+    r.overdue.slice(0, 15).forEach((x, i) => {
+      body += `${i+1}. ${x.vendor || '—'}\n`;
+      body += `   Item    : ${truncate(x.desc, 55)}\n`;
+      body += `   Expected: ${fmtDate(x.dod)} | Days late: ${x.daysLate}\n\n`;
+    });
+  }
+
+  if (r.noRFQ.length) {
+    body += `REQUESTS WITHOUT QUOTE (${r.noRFQ.length})\n${'-'.repeat(30)}\n`;
+    r.noRFQ.slice(0, 10).forEach((x, i) => {
+      body += `${i+1}. ${truncate(x.desc, 55)}\n`;
+      body += `   Requested: ${fmtDate(x.prDate)} | Waiting: ${x.age} days\n\n`;
+    });
+  }
+
+  if (r.highRiskVendors.length) {
+    body += `HIGH-RISK SUPPLIERS (${r.highRiskVendors.length})\n${'-'.repeat(30)}\n`;
+    r.highRiskVendors.forEach((v, i) => {
+      body += `${i+1}. ${v.vendor} — ${v.count} overdue orders\n`;
+    });
+    body += '\n';
+  }
+
+  if (r.upcoming.length) {
+    body += `DUE IN NEXT 14 DAYS (${r.upcoming.length})\n${'-'.repeat(30)}\n`;
+    r.upcoming.slice(0, 10).forEach((x, i) => {
+      body += `${i+1}. ${x.vendor || '—'}\n`;
+      body += `   Item: ${truncate(x.desc, 55)}\n`;
+      body += `   Due : ${fmtDate(x.dod)} | Days left: ${x.daysLeft === 0 ? 'Today!' : x.daysLeft}\n\n`;
+    });
+  }
+
+  body += `${'='.repeat(52)}\n`;
+  body += `Generated by ProcureAlert\n`;
+  body += `Your data was processed locally and never uploaded to any server.\n`;
+
+  return body;
+}
+
+// ── Copy report to clipboard ──────────────────────────────────────────────
+function doCopy() {
+  if (!state.emails.length) {
+    showToast('Please add at least one recipient email first', 'error');
+    return;
+  }
+
+  const text = buildPlainTextReport();
+
+  navigator.clipboard.writeText(text).then(() => {
+    // Show success panel
+    $('copySuccessPanel').style.display = 'block';
+    $('recipientDisplay').textContent = state.emails.join(', ');
+    showToast('Report copied! Now paste it into your email.', 'success');
+    $('copyReportBtn').textContent = '✅ Copied!';
+    setTimeout(() => { $('copyReportBtn').textContent = '📋 Copy Report'; }, 3000);
+  }).catch(() => {
+    // Fallback for browsers that block clipboard API
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.focus(); ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    $('copySuccessPanel').style.display = 'block';
+    $('recipientDisplay').textContent = state.emails.join(', ');
+    showToast('Report copied! Now paste it into your email.', 'success');
+  });
+}
+
+$('copyReportBtn').addEventListener('click', doCopy);
+document.addEventListener('click', e => {
+  if (e.target && e.target.id === 'copyAgainBtn') doCopy();
+});
+</script>
+</body>
+</html>
+PYEOF
