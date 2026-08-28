@@ -8,6 +8,7 @@ that n8n uses to send email alerts.
 First run:  python procurement_report.py          (interactive setup)
 Re-run:     python procurement_report.py          (uses saved config)
 New setup:  python procurement_report.py --setup  (reconfigure)
+Auto mode:  python procurement_report.py --auto   (GitHub Actions)
 
 Author: Huzaifa Aziz
 """
@@ -216,21 +217,31 @@ def run_setup():
 def load_data_raw(config):
     try:
         if config.get('data_source') == 'google_sheets':
-            try:
-                import gspread, google.auth
+            import gspread
+
+            sa_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+            if sa_json:
+                # GitHub Actions mode — use service account from secret
+                from google.oauth2.service_account import Credentials
+                creds = Credentials.from_service_account_info(
+                    json.loads(sa_json),
+                    scopes=['https://spreadsheets.google.com/feeds',
+                            'https://www.googleapis.com/auth/drive'])
+                gc = gspread.authorize(creds)
+            else:
+                # Colab mode — use interactive auth
+                import google.auth
                 from google.colab import auth
                 auth.authenticate_user()
                 creds, _ = google.auth.default()
                 gc = gspread.authorize(creds)
-                sh = gc.open_by_key(config['sheet_id'])
-                ws = sh.worksheet(config.get('sheet_name','Sheet1'))
-                return pd.DataFrame(ws.get_all_records())
-            except ImportError:
-                warn("gspread not installed: pip install gspread google-auth")
-                return None
+
+            sh = gc.open_by_key(config['sheet_id'])
+            ws = sh.worksheet(config.get('sheet_name', 'Sheet1'))
+            return pd.DataFrame(ws.get_all_records())
         else:
             return pd.read_excel(config['file_path'],
-                                 sheet_name=config.get('sheet_name',0))
+                                 sheet_name=config.get('sheet_name', 0))
     except Exception as e:
         warn(f"Could not load data: {e}")
         return None
@@ -364,12 +375,47 @@ def calc_focus_group(df, config):
     return {'group':fg,'total_prs':len(grp),
             'total_pos':int(grp[col['po_number']].notna().sum()) if col.get('po_number') else 0,
             'total_value_fmt':f"{tv:,.0f}",
-            'unissued_pos':0,'issued_no_ack':0}  # extend with issue/ack cols if available
+            'unissued_pos':0,'issued_no_ack':0}
+
+# ── Drive upload (GitHub Actions) ─────────────────────────────────────────────
+def upload_to_drive(out):
+    sa_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+    if not sa_json:
+        return
+    info("Uploading report.json to Google Drive...")
+    try:
+        from google.oauth2.service_account import Credentials
+        from googleapiclient.discovery import build
+        from googleapiclient.http import MediaFileUpload
+
+        creds = Credentials.from_service_account_info(
+            json.loads(sa_json),
+            scopes=['https://www.googleapis.com/auth/drive'])
+        drive = build('drive', 'v3', credentials=creds)
+
+        results = drive.files().list(
+            q="name='report.json' and trashed=false",
+            fields="files(id, name)").execute()
+        files = results.get('files', [])
+
+        media = MediaFileUpload(str(out), mimetype='application/json')
+        if files:
+            drive.files().update(
+                fileId=files[0]['id'], media_body=media).execute()
+            ok("Updated existing report.json on Google Drive")
+        else:
+            drive.files().create(
+                body={'name': 'report.json'}, media_body=media).execute()
+            ok("Uploaded new report.json to Google Drive")
+    except Exception as e:
+        warn(f"Drive upload failed: {e}")
+        sys.exit(1)
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--setup', action='store_true', help='Re-run interactive setup')
+    parser.add_argument('--auto', action='store_true', help='GitHub Actions mode — upload to Drive after run')
     args = parser.parse_args()
 
     if args.setup or not CONFIG_FILE.exists():
@@ -445,8 +491,12 @@ def main():
     else:
         ok("No alerts — n8n will send the daily summary email")
 
-    if config.get('output') == 'google_drive':
-        print(f"\n  {c('Next step:','yellow')} Run Cell 3 in Colab to upload to Google Drive.")
+    # Upload to Drive if running in GitHub Actions (--auto) or configured for Drive
+    if args.auto or config.get('output') == 'google_drive':
+        if os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON'):
+            upload_to_drive(out)
+        else:
+            print(f"\n  {c('Next step:','yellow')} Run Cell 3 in Colab to upload to Google Drive.")
 
 if __name__ == '__main__':
     main()
