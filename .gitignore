@@ -1,0 +1,27 @@
+﻿# Node
+node_modules/
+npm-debug.log*
+
+# Environment
+.env
+*.env
+
+# Service account key — NEVER commit this
+backend/service-account.json
+service-account.json
+
+# React build
+frontend/build/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# User data
+backend/users.json
+scripts/report.json

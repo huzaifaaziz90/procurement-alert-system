@@ -1,324 +1,378 @@
-# ProcureAlert — Automated Procurement Monitoring System
+# 🔔 ProcureAlert — Automated Procurement Intelligence
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue?logo=python)](https://python.org)
-[![n8n](https://img.shields.io/badge/n8n-Workflow%20Automation-orange?logo=n8n)](https://n8n.io)
-[![Docker](https://img.shields.io/badge/Docker-Required-blue?logo=docker)](https://docker.com)
-[![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
-[![Status](https://img.shields.io/badge/Status-Active-brightgreen)]()
+ProcureAlert is an open-source procurement alert system that reads your PR/PO data from Google Sheets, runs configurable KPI logic, and sends automated email alerts every morning — with zero manual work.
 
-A self-hosted procurement alert system that reads your PR/PO data from
-Excel or Google Sheets, runs configurable business logic, and sends
-automated email alerts — daily summaries, overdue deliveries, vendor
-risk flags, and more.
+Built by **Huzaifa Aziz** — based on real procurement workflows from Solvay SHPCO.
 
-Built as a portfolio project demonstrating end-to-end automation using
-Python, n8n, Docker, and Google Drive. Designed for procurement and
-operations teams who want actionable alerts without enterprise software costs.
+**GitHub:** [github.com/huzaifaaziz90/procurement-alert-system](https://github.com/huzaifaaziz90/procurement-alert-system)
 
 ---
 
-## 📸 What It Does
+## 🏗️ Architecture
 
 ```
-Your Excel / Google Sheets data
-          ↓
-Python script — runs your alert logic
-          ↓
-report.json — structured output
-          ↓
-n8n workflow — reads report, routes alerts
-          ↓
-Gmail — daily summary + urgent alert emails
+Google Sheets (your data)
+        ↓
+GitHub Actions (runs daily at 7:50am UTC)
+        ↓
+Python Script (alert logic → report.json)
+        ↓
+Google Drive (stores report.json)
+        ↓
+n8n / Zapier / Make (fetches JSON → sends email)
+        ↓
+Your Inbox 📧
+
+─────────────────────────────────────────
+
+Web App (optional SaaS interface)
+├── Frontend: React (GitHub Pages)
+└── Backend: Node.js + Express (Railway / local)
 ```
-
-**Daily Summary Email** — every morning at 8am:
-- Total PRs and POs in the pipeline
-- Average PR-to-PO cycle time
-- Savings achieved vs PO value
-- HEY purchase group focus metrics
-
-**Urgent Alert Email** — fires when thresholds are breached:
-- Deliveries overdue by 7+ days
-- PRs stuck without RFQ for 14+ days
-- Vendors with 3 or more overdue POs
-- Issued POs without vendor acknowledgement
 
 ---
 
-## 🗂 Project Structure
+## ✅ What's Built
 
-```
-procurement-alert-system/
-├── scripts/
-│   └── procurement_report.py     # Main logic script (configurable)
-├── data/
-│   └── PR_PO_Log_2026_Mock.xlsx  # Mock 2026 data (300 rows, all alert types)
-├── frontend/
-│   └── procurement-alert-tool.html  # Browser-based tool (no install needed)
-├── docs/
-│   ├── DOCKER_SETUP.md           # Docker installation guide
-│   ├── N8N_SETUP.md              # n8n workflow setup guide
-│   ├── EMAILJS_SETUP.md          # Email sending setup
-│   └── screenshots/              # UI and email screenshots
-├── .github/
-│   └── workflows/
-│       └── run_report.yml        # GitHub Actions (optional automation)
-├── requirements.txt
-└── README.md
-```
+| Component | Description | Status |
+|-----------|-------------|--------|
+| Python alert script | Reads Google Sheets, runs KPI logic, outputs report.json | ✅ Live |
+| GitHub Actions | Runs script daily at 7:50am UTC automatically | ✅ Active |
+| Google Drive integration | Uploads report.json after every run | ✅ Working |
+| n8n workflow | Fetches JSON, builds HTML email, sends via Gmail SMTP | ✅ Active |
+| React frontend | Setup wizard for new users | ✅ Built |
+| Node.js backend | API with webhook endpoints per user | ✅ Built |
+| Mock dataset v1 | 300-row clean dataset | ✅ Done |
+| Mock dataset v2 | 300-row intentionally inconsistent dataset | ✅ Done |
+
+---
+
+## 📊 KPIs Tracked
+
+| KPI | Description | Configurable |
+|-----|-------------|-------------|
+| Overdue deliveries | Items past promised delivery date | ✅ Days threshold |
+| PRs without RFQ | Requests stuck without a quote | ✅ Days threshold |
+| High-risk vendors | Suppliers with multiple overdue orders | ✅ Count threshold |
+| Upcoming deliveries | Deliveries due soon | ✅ Days window |
+| Avg PR→PO cycle time | Days from request to order | — |
+| On-time delivery rate | % delivered on or before DOD | — |
+| Spend by vendor | Top 10 suppliers by value | — |
+| Cancellation rate | % of cancelled orders | — |
+| Department breakdown | Order volume by department | — |
 
 ---
 
 ## 🚀 Quick Start
 
+### Option A — Use the Web App (Easiest)
+
+1. Open the frontend at `http://localhost:3000` (or deployed URL)
+2. Enter your email
+3. Paste your Google Sheet URL (must be set to "Anyone with link can view")
+4. Map your columns — auto-detected
+5. Select your KPIs and thresholds
+6. Get your webhook URL
+7. Plug into Zapier, Make, Power Automate, or n8n
+
+### Option B — Python Script (GitHub Actions)
+
+See [Full Setup Guide](#full-setup-guide) below.
+
+---
+
+## 🗂️ Project Structure
+
+```
+procurement-alert-system/
+├── backend/                  # Node.js API
+│   ├── index.js              # Express server + alert logic
+│   ├── package.json
+│   └── .env.example          # Copy to .env and fill in
+│
+├── frontend/                 # React web app
+│   ├── src/
+│   │   ├── App.js            # Main app — setup wizard + guides
+│   │   └── index.js
+│   └── package.json
+│
+├── scripts/                  # Python automation
+│   ├── procurement_report.py # Main script
+│   └── config.json           # Your column mappings + KPI config
+│
+├── data/
+│   ├── PR_PO_Log_2026_Mock.xlsx    # Clean mock dataset (300 rows)
+│   └── PR_PO_Log_2026_Mock_v2.xlsx # Inconsistent mock dataset (300 rows)
+│
+├── docs/
+│   ├── DOCKER_SETUP.md       # Docker + n8n setup guide
+│   └── N8N_SETUP.md          # n8n workflow guide
+│
+├── .github/
+│   └── workflows/
+│       └── run_report.yml    # GitHub Actions daily schedule
+│
+└── README.md
+```
+
+---
+
+## 📋 Full Setup Guide
+
 ### Prerequisites
+- Google account
+- GitHub account
+- Node.js v18+ (for web app)
+- Python 3.11+ (for script)
+- Docker Desktop (for local n8n)
 
-| Tool | Purpose | Install Guide |
-|---|---|---|
-| Docker Desktop | Runs n8n locally | [docs/DOCKER_SETUP.md](docs/DOCKER_SETUP.md) |
-| Python 3.8+ | Runs the report script | [python.org/downloads](https://python.org/downloads) |
-| Google Account | Hosts report.json on Drive | Free |
-| Gmail | Sends alert emails | Free |
+---
 
-### 1 — Clone the repo
+### Step 1 — Clone the repo
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/procurement-alert-system.git
+git clone https://github.com/huzaifaaziz90/procurement-alert-system.git
 cd procurement-alert-system
 ```
 
-### 2 — Install Python dependencies
+---
 
+### Step 2 — Set up Google Sheets
+
+1. Upload your PR/PO Excel file to Google Sheets
+   - Go to [sheets.google.com](https://sheets.google.com)
+   - File → Import → Upload your file
+   - Import as Google Sheets format (not Excel)
+2. Note your Sheet ID from the URL:
+   `https://docs.google.com/spreadsheets/d/**YOUR_SHEET_ID**/edit`
+3. Share the sheet:
+   - Click Share → Change to "Anyone with the link can view"
+
+---
+
+### Step 3 — Google Cloud Setup (for GitHub Actions)
+
+1. Go to [console.cloud.google.com](https://console.cloud.google.com)
+2. Create or select a project
+3. Enable **Google Sheets API** and **Google Drive API**
+4. Go to **IAM & Admin → Service Accounts** → Create Service Account
+   - Name: `procurement-github-actions`
+   - Click Create → skip optional steps → Done
+5. Click the service account → **Keys** tab → Add Key → JSON
+6. Download the JSON file — keep it safe
+7. Share your Google Drive folder with the service account email
+
+---
+
+### Step 4 — GitHub Actions Setup
+
+1. Go to your GitHub repo → **Settings → Secrets → Actions**
+2. Add secret: `GOOGLE_SERVICE_ACCOUNT_JSON` → paste the full JSON key contents
+3. The workflow runs automatically at 7:50am UTC daily
+4. To run manually: **Actions → Run Procurement Report → Run workflow**
+
+The workflow file is at `.github/workflows/run_report.yml`
+
+---
+
+### Step 5 — Run the Web App Locally
+
+**Backend:**
 ```bash
-pip install -r requirements.txt
+cd backend
+npm install
+cp .env.example .env
+# Fill in .env if needed
+node index.js
+# Running at http://localhost:3001
 ```
 
-### 3 — Run the script (interactive setup)
+**Frontend:**
+```bash
+cd frontend
+npm install
+npm start
+# Opens at http://localhost:3000
+```
+
+Go through the setup wizard, get your webhook URL.
+
+---
+
+### Step 6 — Connect Your Automation Tool
+
+Paste your webhook URL into any of these tools:
+
+| Tool | Free Tier | Best For |
+|------|-----------|----------|
+| [Make.com](https://make.com) | 1,000 ops/month | Everyone — recommended |
+| [Zapier](https://zapier.com) | 100 tasks/month | Non-technical users |
+| [n8n Cloud](https://app.n8n.cloud) | 5 workflows | Technical users |
+| n8n Self-hosted | Unlimited | Full control |
+| [Power Automate](https://flow.microsoft.com) | With Microsoft 365 | Microsoft shops |
+
+**In Make/Zapier/n8n:**
+1. Schedule trigger → daily at 8:00am
+2. HTTP POST request → your webhook URL
+3. Send email → map report data to email body
+
+---
+
+### Step 7 — Set Up n8n (Self-hosted with Docker)
+
+See [docs/DOCKER_SETUP.md](docs/DOCKER_SETUP.md) for full Docker setup.
+
+Quick start:
+```bash
+docker run -d \
+  --restart unless-stopped \
+  --name n8n \
+  -p 5678:5678 \
+  -v $HOME/.n8n:/home/node/.n8n \
+  -v $HOME/procurement-alerts:/data/procurement \
+  docker.n8n.io/n8nio/n8n
+```
+
+Open n8n at [http://localhost:5678](http://localhost:5678)
+
+See [docs/N8N_SETUP.md](docs/N8N_SETUP.md) for workflow setup.
+
+---
+
+## 🔧 Configuration
+
+Edit `scripts/config.json` to match your sheet's column names:
+
+```json
+{
+  "data_source": "google_sheets",
+  "sheet_id": "YOUR_SHEET_ID",
+  "sheet_name": "Sheet1",
+  "col_map": {
+    "pr_date": "PR date",
+    "rfq_date": "RFQ Date",
+    "po_date": "PO Date",
+    "dod": "PO DOD",
+    "del_status": "Delivery Status",
+    "vendor": "Vendor Name",
+    "value": "PO Value",
+    "desc": "Short Description",
+    "po_number": "PO Number",
+    "dept": "Dept.",
+    "pgr": "PGr"
+  },
+  "delivered_text": "Delivered",
+  "alerts": {
+    "overdue": true,
+    "overdue_days": 7,
+    "no_rfq": true,
+    "no_rfq_days": 14,
+    "vendor_risk": true,
+    "vendor_risk_count": 3,
+    "upcoming": true,
+    "upcoming_days": 14
+  },
+  "focus_group": "HEY"
+}
+```
+
+---
+
+## 🐍 Python Script Reference
 
 ```bash
+# First run — interactive setup
 python scripts/procurement_report.py
-```
 
-On first run, the script walks you through:
-- Where your data lives (local Excel or Google Sheets)
-- Which columns map to which fields
-- Which alerts you want enabled
-- Where to save the output (local folder or Google Drive)
+# Re-run with saved config
+python scripts/procurement_report.py
 
-Your choices are saved to `config.json` so you never have to repeat them.
-
-### 4 — Set up n8n
-
-Follow [docs/N8N_SETUP.md](docs/N8N_SETUP.md) to import the workflow
-and connect your Gmail credentials. Takes about 15 minutes.
-
-### 5 — Activate
-
-Toggle the workflow Active in n8n. Done — emails start arriving daily.
-
----
-
-## ⚙️ Configuration
-
-When you run the script for the first time, it asks you a series of
-questions and saves your answers to `config.json`. You can re-run
-setup at any time:
-
-```bash
+# Reconfigure everything
 python scripts/procurement_report.py --setup
-```
 
-### What gets configured
-
-**Data source**
-- Local Excel file path, or
-- Google Sheets ID (share link)
-
-**Column mapping** — tell the script which of your columns means what:
-
-| Concept | Example column names |
-|---|---|
-| PR / Request date | PR date, Request Date, Req Date |
-| RFQ / Quote date | RFQ Date, Quote Date, Enquiry Date |
-| PO / Order date | PO Date, Order Date |
-| Expected delivery | PO DOD, ETA, Delivery Date, Due Date |
-| Delivery status | Delivery Status, Order Status, Status |
-| Vendor / Supplier | Vendor Name, Supplier, Contractor |
-| Order value | PO Value, Amount, Cost |
-| Description | Short Description, Item, Material |
-
-**Alert thresholds**
-
-| Alert | Default | What it flags |
-|---|---|---|
-| Overdue delivery | 7 days | Past expected delivery, not delivered |
-| PR without RFQ | 14 days | Request raised, no quote requested yet |
-| Vendor risk | 3 POs | Supplier has 3+ overdue orders simultaneously |
-| High-value PO | SAR 100,000 | Single order above threshold |
-
-**Purchase group focus** (optional)
-- Filter metrics by a specific purchasing group (e.g. HEY, FAV, HEV)
-- Reports unissued POs and POs without vendor acknowledgement
-
----
-
-## 📊 Mock Data
-
-`data/PR_PO_Log_2026_Mock.xlsx` contains 300 rows of realistic
-2026 procurement data generated from actual 2022 Solvay SHPCO patterns.
-
-| Metric | Count |
-|---|---|
-| Total rows | 300 |
-| Purchase groups | HEY (177), FAV (85), HEV (38) |
-| Overdue deliveries | 83 |
-| PRs without RFQ | 49 |
-| Upcoming (14 days) | 29 |
-| Issued POs — no acknowledgement | 47 |
-| High-risk vendors (3+ overdue) | 14 |
-
-All vendor names, descriptions, and values are real patterns from
-industrial procurement (chemicals, maintenance, E&I, QHSE) with
-dates shifted to 2026 for demo purposes.
-
----
-
-## 🌐 Frontend Tool
-
-`frontend/procurement-alert-tool.html` is a standalone browser tool
-for one-off reports. No installation. No server. Open the file in
-Chrome and it works.
-
-**Features:**
-- Drag and drop Excel upload (.xlsx, .xls, .csv)
-- Auto-detects column names
-- Configurable thresholds
-- Live results table with overdue, upcoming, and vendor flags
-- Email preview
-- Copy-to-clipboard report for pasting into Outlook or Gmail
-- 100% private — data never leaves the browser
-
-**To use:** download the HTML file, open it in Chrome, upload your
-Excel file, configure, click Generate.
-
-**Live demo:**
-[https://YOUR_USERNAME.github.io/procurement-alert-system/frontend/procurement-alert-tool.html](https://YOUR_USERNAME.github.io/procurement-alert-system/frontend/procurement-alert-tool.html)
-
----
-
-## 🏗 Architecture
-
-```
-┌─────────────────────────────────────────────────────┐
-│                   DATA SOURCES                       │
-│  Local Excel (.xlsx)  │  Google Sheets (live link)  │
-└──────────────┬──────────────────────────┬───────────┘
-               │                          │
-               ▼                          ▼
-┌─────────────────────────────────────────────────────┐
-│           procurement_report.py (Python)            │
-│                                                     │
-│  • Column mapping (user-defined)                    │
-│  • Alert logic (configurable thresholds)            │
-│  • Overdue / No RFQ / Vendor risk / Upcoming        │
-│  • Outputs structured report.json                   │
-└──────────────────────────┬──────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────┐
-│              report.json (output)                   │
-│  Local folder  │  Google Drive (public link)        │
-└──────────────────────────┬──────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────┐
-│                 n8n (local, Docker)                 │
-│                                                     │
-│  Schedule Trigger (daily 8am)                       │
-│       ↓                                             │
-│  HTTP Request (fetch report.json)                   │
-│       ↓                                             │
-│  Code node (build email HTML)                       │
-│       ↓                                             │
-│  IF node (alert flags)                              │
-│   ↓ True              ↓ False                       │
-│  🚨 Alert email    📦 Summary email                 │
-└──────────────────────────┬──────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────┐
-│              Gmail (SMTP via App Password)          │
-│  Recipients: configurable, multiple addresses       │
-└─────────────────────────────────────────────────────┘
+# GitHub Actions mode (auto-uploads to Drive)
+python scripts/procurement_report.py --auto
 ```
 
 ---
 
-## 🔒 Privacy
+## 🔗 API Reference
 
-- Your procurement data is never sent to any third-party service
-- The Python script reads your data locally or from your own Google Drive
-- n8n runs entirely on your own machine (Docker container)
-- Gmail credentials are stored locally in n8n's encrypted credential store
-- The frontend HTML tool processes data entirely in your browser
+### POST `/api/setup`
+Save user configuration and get a webhook URL.
 
----
-
-## 🛠 Tech Stack
-
-| Layer | Technology | Why |
-|---|---|---|
-| Data processing | Python, pandas, openpyxl | Flexible, handles messy Excel |
-| Workflow automation | n8n (self-hosted) | Visual, no-code friendly, free |
-| Containerisation | Docker | Consistent environment, easy setup |
-| Email delivery | Gmail SMTP | Free, reliable |
-| Cloud storage | Google Drive | Free hosting for report JSON |
-| Frontend | Vanilla HTML/JS, SheetJS | No framework needed, works offline |
-| Version control | GitHub + GitHub Pages | Free hosting and CI |
-
----
-
-## 📋 Requirements
-
-```
-pandas>=1.3.0
-openpyxl>=3.0.0
-gspread>=5.0.0
-google-auth>=2.0.0
-google-api-python-client>=2.0.0
+```json
+{
+  "email": "you@company.com",
+  "sheetId": "YOUR_SHEET_ID",
+  "sheetName": "Sheet1",
+  "colMap": { "vendor": "Vendor Name", "dod": "PO DOD", ... },
+  "kpis": { "overdue": { "enabled": true, "days": 7 } }
+}
 ```
 
+Returns:
+```json
+{
+  "success": true,
+  "userId": "abc123",
+  "webhookUrl": "https://your-backend.com/api/run/abc123"
+}
+```
+
+### POST `/api/run/:userId`
+Run the report for a user. Called by Zapier/Make/n8n on a schedule.
+
+Returns full JSON report with all KPI results.
+
+### POST `/api/preview-sheet`
+Load column headers from a Google Sheet for the setup wizard.
+
+```json
+{ "sheetId": "YOUR_SHEET_ID", "sheetName": "Sheet1" }
+```
+
 ---
 
-## 🗺 Roadmap
+## 📦 Tech Stack
 
-- [x] Python report script with configurable column mapping
-- [x] n8n workflow for daily scheduling and email routing
-- [x] Mock 2026 data for testing and demonstration
-- [x] Frontend HTML tool for one-off reports
-- [ ] FastAPI backend for cloud hosting
-- [ ] SharePoint / OneDrive integration (Microsoft 365)
-- [ ] Gmail OAuth (send from user's own email)
-- [ ] User dashboard with report history
-- [ ] Multi-tenant support
+| Layer | Technology |
+|-------|-----------|
+| Data source | Google Sheets |
+| Alert logic (script) | Python + pandas |
+| Alert logic (API) | Node.js + Express |
+| Scheduler | GitHub Actions |
+| Automation | n8n / Zapier / Make / Power Automate |
+| Email | Gmail SMTP / any SMTP |
+| Frontend | React |
+| Hosting (backend) | Railway (free) |
+| Hosting (frontend) | GitHub Pages |
+| Storage | Google Drive (report.json) |
+
+---
+
+## 🗺️ Roadmap
+
+- [ ] Deploy backend to Railway
+- [ ] Deploy frontend to GitHub Pages
+- [ ] SharePoint / OneDrive integration
+- [ ] Email sending directly from the web app
+- [ ] Dashboard with charts and trends
+- [ ] Multi-user accounts with Google login
+- [ ] PDF report export
+- [ ] Slack / Teams notifications
 
 ---
 
 ## 👤 Author
 
 **Huzaifa Aziz**
-Business Analyst | Product Manager | Procurement Operations
+Procurement & Supply Chain Professional
 
-- Worked as Procurement Analyst at Solvay (multinational chemicals)
-- Built and managed PR/PO workflows in SAP MM for European suppliers
-- Previously rebuilt this workflow in Power Automate — this project
-  recreates and extends that system using open-source tools
-
-[LinkedIn](https://linkedin.com/in/huzaifaaziz) · [GitHub](https://github.com/huzaifaaziz)
+Built to automate the PR/PO monitoring workflow I ran at Solvay SHPCO — flagging overdue deliveries, vendors with multiple late orders, and purchase requests stuck without quotes.
 
 ---
 
 ## 📄 License
 
-MIT License — free to use, modify, and distribute.
-See [LICENSE](LICENSE) for details.
+MIT — free to use, modify, and distribute.
