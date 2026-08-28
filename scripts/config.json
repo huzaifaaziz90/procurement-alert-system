@@ -1,0 +1,34 @@
+{
+  "data_source": "google_sheets",
+  "sheet_id": "1m4jYt-ZqV4mi9eheF6QpztbXmpGU3YfA",
+  "sheet_name": "2026",
+  "col_map": {
+    "pr_date": "PR Date",
+    "rfq_date": "RFQ Date",
+    "po_date": "PO Date",
+    "dod": "DOD",
+    "del_status": "Delivery Status",
+    "vendor": "Vendor",
+    "value": "PO Value",
+    "desc": "Short Description",
+    "po_number": "PO Number",
+    "dept": "Department",
+    "pgr": "Purchasing Group"
+  },
+  "delivered_text": "Delivered",
+  "alerts": {
+    "overdue": true,
+    "overdue_days": 7,
+    "no_rfq": true,
+    "no_rfq_days": 14,
+    "vendor_risk": true,
+    "vendor_risk_count": 3,
+    "upcoming": true,
+    "upcoming_days": 14,
+    "no_ack": true,
+    "unissued": true
+  },
+  "focus_group": "HEY",
+  "output": "google_drive",
+  "output_path": "scripts/report.json"
+}
