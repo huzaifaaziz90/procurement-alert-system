@@ -3,17 +3,17 @@
   "sheet_id": "1A4YO0u1kSCG0LW575iQIUJSaxYqvR81d2AdNNRGGzJ0",
   "sheet_name": "2026",
   "col_map": {
-    "pr_date": "PR Date",
+    "pr_date": "PR date",
     "rfq_date": "RFQ Date",
     "po_date": "PO Date",
-    "dod": "DOD",
+    "dod": "PO DOD",
     "del_status": "Delivery Status",
-    "vendor": "Vendor",
+    "vendor": "Vendor Name",
     "value": "PO Value",
     "desc": "Short Description",
     "po_number": "PO Number",
-    "dept": "Department",
-    "pgr": "Purchasing Group"
+    "dept": "Dept.",
+    "pgr": "PGr"
   },
   "delivered_text": "Delivered",
   "alerts": {
